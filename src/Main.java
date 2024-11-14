@@ -1,26 +1,56 @@
 import java.util.*;
+import utils.*;
 
 public class Main {
     public static void main(String[] args) {
-        HNSW hnsw = new HNSW(0.8, 5, 2);
+        HNSW hnsw = new HNSW(0.8, 40, 10);
         int[][] points = {
                 {23, 45}, {12, 5}, {67, 89}, {43, 54}, {91, 12},
                 {34, 76}, {28, 9}, {76, 45}, {85, 62}, {49, 33},
                 {14, 67}, {93, 28}, {56, 77}, {32, 58}, {68, 14},
                 {22, 39}, {84, 97}, {55, 15}, {71, 44}, {60, 29}
         };
+        try {
+            points = CSVLoader.loadPointsFromCSV("dataset10k.csv");
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
 
         hnsw.setVectors(points);
-        hnsw.build();
-        hnsw.printLevels();
+
+        long startTime = System.nanoTime();
+        hnsw.build(false);
+        long endTime = System.nanoTime();
+        long elapsedTime = endTime - startTime;
+//        System.out.println("Elapsed time in building in milliseconds: " + elapsedTime);
+
+//        hnsw.printLevels();
 //        System.out.println(Arrays.toString(hnsw.getEntryPoint()));
         int[] query = new int[]{40, 50};
-        List<int[]> neighbors = hnsw.search(query, 3, 13);
+
+        startTime = System.nanoTime();
+        List<int[]> neighbors = hnsw.search(query, 10, 60);
+        endTime = System.nanoTime();
+        elapsedTime = endTime - startTime;
         System.out.println("Query: " + Arrays.toString(query));
+
+        System.out.println("HNSW:");
+        System.out.println("Elapsed time in searching in milliseconds: " + elapsedTime);
+
+
         System.out.print("Neighbors: ");
         for(int[] neighbor : neighbors) {
             System.out.print(Arrays.toString(neighbor) + " ");
         }
+        System.out.println();
+
+        startTime = System.nanoTime();
+        Naive.doFinal(points, query, 10);
+        endTime = System.nanoTime();
+        elapsedTime = endTime - startTime;
+        System.out.println("Elapsed time in searching with naive method in milliseconds: " + elapsedTime);
+
     }
 }
 
@@ -168,7 +198,7 @@ class HNSW{
         return answer;
     }
 
-    public void build(){
+    public void build(boolean verbose){
         //create new arraylists for each level
         for(int i = 0; i <= highestAllowedLevel; i++){
             data.partitions.add(new HashMap<>());
@@ -209,6 +239,7 @@ class HNSW{
                     neighborSet.add(minNode);
                     boolean isOptimal = true;
 //                    System.out.println(currLevel.get(minNode.getVector()));
+                    // ========== make the neighbor set of fixed size =============
                     for(Node neighbor: currLevel.get(minNode.getVector())){
                         Node neighborNode = new Node(neighbor.getVector(), reference);
                         neighborSet.add(neighborNode);
@@ -269,6 +300,7 @@ class HNSW{
                 }
             }
             highestActualLevel = Math.max(level, highestActualLevel);
+            if(verbose) System.out.println("Inserted " + Arrays.toString(vector));
         }
 
     }
